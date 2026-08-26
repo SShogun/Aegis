@@ -2,7 +2,6 @@ Below is **File 1: the complete project idea**. This should act as the foundatio
 
 Suggested filename:
 
-````md
 # Aegis
 
 ## An Event-Driven, Multi-Tenant AI Risk Intelligence Platform with Cryptographically Verifiable Audit Trails
@@ -93,7 +92,7 @@ Event Stream
 Risk Analysis      Audit Engine
   |                   |
   v                   v
-ML Prediction      Cryptographic Proof
+Adaptive Risk Signals      Cryptographic Proof
   |                   |
   +---------+---------+
             |
@@ -180,7 +179,7 @@ Contributing Factors:
 + New geographic region
 + 200x normal download volume
 + First-time access to restricted resource
-+ High anomaly score from behavioral model
++ High anomaly and behavioral deviation signals
 ```
 
 The event is then:
@@ -632,7 +631,7 @@ Event Stream
 Risk Processing          Audit Processing
        |                       |
        v                       v
-ML Prediction             Hash Generation
+Adaptive Risk Signals     Hash Generation
        |                       |
        +-----------+-----------+
                    |
@@ -648,7 +647,7 @@ The risk engine is responsible for converting raw events into meaningful risk as
 
 The final system should not depend on a single model.
 
-Instead:
+Instead, the architecture should combine multiple signal families:
 
 ```text
                  Incoming Event
@@ -656,80 +655,77 @@ Instead:
                         v
               Feature Extraction
                         |
-          +-------------+-------------+
-          |             |             |
-          v             v             v
-     Rule Engine    ML Model     Behavioral Model
-          |             |             |
-          +-------------+-------------+
+          +-------------+-------------+-------------+
+          |             |             |             |
+          v             v             v             v
+ Isolation Forest   Autoencoder   Behavioral   Supervised
+                                  Baseline     Classifier
+          |             |             |             |
+          +-------------+-------------+-------------+
+                        |
+                        v
+                Anomaly Ensemble
+                        |
+                        v
+             Contextual Security Signals
                         |
                         v
                  Risk Aggregator
                         |
                         v
-                  Final Risk Score
+             Explainability / SHAP Layer
+                        |
+                        v
+              Final Risk Assessment
 ```
 
 Possible scoring formula:
 
 ```text
 Final Risk Score =
-
-0.40 * ML Anomaly Score
-+
-0.35 * Classification Score
-+
-0.25 * Policy Score
+0.35 * Ensemble Anomaly Score
+0.30 * Behavioral Deviation Score
+0.20 * Supervised Risk Probability
+0.15 * Contextual Security Score
 ```
 
 The exact formula should be configurable and may change as the project evolves.
 
-The important architectural principle is that the risk engine is modular.
+The important architectural principle is that the risk engine is modular and owns the final decision.
 
-New scoring strategies should be possible without rewriting the entire system.
+New scoring strategies should be possible without rewriting the entire system, and no single ML model should determine the final risk level on its own.
 
 ---
 
 # 12. Machine Learning System
 
-The Python component of Aegis is responsible for machine learning.
+The Python component of Aegis is responsible for machine learning intelligence signals.
 
-The project must include actual model training.
+The project must include actual model training, but the intelligence system should be hybrid rather than monolithic.
 
-The initial model should focus on anomaly detection.
+The ML layer should be able to support distinct capabilities:
+
+- Global anomaly detection using Isolation Forest
+- Representation-based anomaly detection using an autoencoder
+- Behavioral deviation scoring using historical baselines
+- Supervised threat classification using XGBoost or LightGBM
 
 Possible input features:
 
 ```text
 Activity Hour
 Day of Week
-Transaction Amount
-Request Frequency
+Transaction Rate
 Download Volume
 Historical Average
 Location Change
 Resource Sensitivity
 Previous Failed Logins
+Privilege Usage Pattern
 Behavior Deviation
 ```
 
-A first model may use:
-
-```text
-Isolation Forest
-```
-
-This is suitable for identifying unusual patterns without requiring a large labeled dataset.
-
-Later versions may include:
-
-```text
-XGBoost
-```
-
-for supervised risk classification.
-
-The training lifecycle should eventually resemble:
+The training lifecycle should support multiple model families and may eventually resemble:
 
 ```text
 Raw Dataset
@@ -741,25 +737,26 @@ Data Cleaning
 Feature Engineering
       |
       v
-Train/Test Split
-      |
-      v
-Model Training
+Model-Specific Training
       |
       v
 Evaluation
       |
       v
-Model Registration
+Artifact Registration
       |
       v
-Deployment
+Inference
+      |
+      v
+Signal Export
 ```
 
-The system should store model metadata.
+The system should store model metadata and signal metadata.
 
 ```text
 Model ID
+Model Family
 Version
 Training Timestamp
 Dataset Version
@@ -772,8 +769,9 @@ Status
 Example:
 
 ```text
-Model: anomaly-detector
-Version: 1.2.0
+Model: hybrid-risk-classifier
+Family: XGBoost
+Version: 1.0.0
 
 Precision: 0.91
 Recall:    0.87
@@ -782,13 +780,15 @@ F1 Score:  0.89
 Status: Production
 ```
 
+The Python service should provide intelligence signals, not the final application-level risk decision.
+
 ---
 
 # 13. Explainable Risk Scores
 
 A risk score without context is difficult to trust.
 
-Aegis should attempt to explain why an event was classified as risky.
+Aegis should explain why an event was classified as risky.
 
 Instead of:
 
@@ -807,7 +807,8 @@ Contributing Factors:
 2. New geographic location
 3. Download volume significantly above baseline
 4. First-time access to sensitive resource
-5. High anomaly score from behavioral model
+5. High anomaly ensemble score
+6. Supervised model matched known malicious patterns
 ```
 
 The frontend should visualize the strongest contributing factors.
@@ -823,11 +824,13 @@ Sensitive Resource       █████
 
 The exact explainability implementation may evolve depending on the selected ML models.
 
+SHAP or a similar established technique should be used where it applies to supervised predictions, while other model families may require different explanation strategies.
+
 ---
 
 # 14. Behavioral Profiling
 
-Aegis should learn what normal behavior looks like.
+Aegis should learn what normal behavior looks like for each user, service account, or entity.
 
 For example:
 
@@ -865,7 +868,7 @@ the system calculates behavioral deviation.
 
 This makes anomaly detection contextual.
 
-A download of 500 files may be normal for one user and suspicious for another.
+A download of 500 files may be normal for one user and suspicious for another. Behavioral profiling is therefore a complementary signal, not just a supporting feature.
 
 ---
 
@@ -873,7 +876,7 @@ A download of 500 files may be normal for one user and suspicious for another.
 
 Machine learning models should not exist as unexplained files inside the repository.
 
-The system should eventually support model lifecycle management.
+The system should support model lifecycle management across multiple model families.
 
 ```text
 Dataset
@@ -894,15 +897,15 @@ Candidate Model
 Production Deployment
 ```
 
-An administrator should eventually be able to compare models.
+An administrator should eventually be able to compare models and signal families.
 
 ```text
-Current Model
+Current Model Family
 
 Precision: 0.89
 Recall:    0.84
 
-Candidate Model
+Candidate Model Family
 
 Precision: 0.93
 Recall:    0.88
@@ -921,6 +924,8 @@ Production
 ```
 
 This creates a basic MLOps workflow.
+
+The important point is that lifecycle management must support independent anomaly models, supervised classifiers, and future behavioral or reconstruction models without forcing them into the same release pattern.
 
 ---
 
