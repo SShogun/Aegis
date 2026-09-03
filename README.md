@@ -2,55 +2,83 @@
 
 **Aegis monitors user and system activity, detects threats, assesses risk, and maintains tamper-evident audit logs.**
 
-Aegis is an engineering-focused project for turning security events—such as logins, API requests, resource access, and privilege changes—into explainable risk signals and verifiable audit history. The repository is being built incrementally: today it contains the Go and PostgreSQL foundation; event processing, risk intelligence, and the dashboard are planned layers.
+Aegis is an engineering-focused security platform for turning security events—such as logins, API requests, resource access, and privilege changes—into explainable risk signals and verifiable audit history.
 
-## The problem
+The project is being built incrementally. Each phase introduces one major architectural capability and leaves behind a testable result before the next layer is added.
 
-Systems produce more activity than people can investigate manually. Suspicious behavior can be difficult to distinguish from normal activity, its severity can be difficult to explain, and historical audit records are only useful when unauthorized changes can be detected. A multi-tenant system must also keep each organization’s data isolated.
+## The Problem
 
-Aegis is designed to address these problems through event processing, contextual risk analysis, layered authorization, and cryptographically verifiable audit history.
+Systems produce more activity than people can investigate manually. Suspicious behavior can be difficult to distinguish from normal activity, its severity can be difficult to explain, and historical audit records are only useful when unauthorized changes can be detected.
 
-## What Aegis does
+A multi-tenant security platform must also ensure that each organization's data and operations remain isolated.
+
+Aegis is designed to address these problems through:
+
+* Event ingestion and validation
+* Hybrid anomaly and behavioral detection
+* Contextual risk analysis
+* Layered authorization and tenant isolation
+* Explainable risk signals
+* Cryptographically verifiable audit history
+* Real-time security intelligence
+
+## What Aegis Does
 
 The intended end-to-end flow is:
 
 ```text
-User/System Activity
-        ↓
-Event Ingestion and Processing
-        ↓
-Threat / Anomaly Detection
-        ↓
-Risk Assessment
-        ↓
-Dashboard and Alerts
-        ↓
-Tamper-Evident Audit Trail
+User / System Activity
+          ↓
+    Event Ingestion
+          ↓
+   Event Validation
+          ↓
+   ML / Anomaly Signals
+          ↓
+ Contextual Risk Analysis
+          ↓
+    Risk Assessment
+          ↓
+ Dashboard / Alerts
+          ↓
+ Tamper-Evident Audit Trail
 ```
 
-Only the Phase 1 service foundation is implemented at present. The event, detection, risk, alerting, and audit stages above are planned.
+The project is being implemented layer by layer rather than building this entire pipeline at once.
 
-## Example scenario
+**Current implementation status: Phase 5 is complete.**
 
-The following illustrates the intended behavior; it is not an implemented workflow yet.
+The independent hybrid ML system is implemented and can train models, persist artifacts, perform inference, and combine multiple detection signals. The Go risk-intelligence integration begins in Phase 6.
+
+## Example Scenario
+
+The following illustrates the intended long-term behavior:
 
 ```text
 User logs in
       ↓
-Accesses a sensitive resource at an unusual time
+Accesses sensitive resources at an unusual time
       ↓
-Downloads far more data than their behavioral baseline
+Downloads significantly more data than normal
       ↓
-Aegis combines anomaly and contextual signals
+Multiple detection methods identify unusual behavior
       ↓
-Risk is assessed with contributing factors
+ML signals are combined with security context
       ↓
-The decision and security action are recorded for audit
+Aegis produces an explainable risk assessment
+      ↓
+The event and resulting security action are recorded
+      ↓
+Audit integrity can later be verified
 ```
 
-## How it works
+The complete workflow is a target architecture. Not every stage is currently implemented.
 
-The long-term architecture separates event handling, intelligence, risk aggregation, and audit integrity so that no single model or component owns the whole decision:
+---
+
+## How It Works
+
+Aegis separates detection, risk aggregation, and audit integrity so that no single model or component owns the entire security decision.
 
 ```text
                          Aegis
@@ -59,6 +87,9 @@ The long-term architecture separates event handling, intelligence, risk aggregat
         |                  |                  |
         v                  v                  v
    Event System       ML / Behavior      Audit System
+        |                  |                  |
+        |                  v                  |
+        |             ML Signals             |
         |                  |                  |
         +------------------+------------------+
                            |
@@ -69,33 +100,181 @@ The long-term architecture separates event handling, intelligence, risk aggregat
                       Dashboard
 ```
 
-This is the documented target architecture. The current repository implements the backend lifecycle and platform foundation only.
+The architecture is intentionally incremental.
 
-## ML and risk intelligence
+The current implementation has established the backend foundation and independent ML capability. Future phases connect those capabilities into the complete risk-intelligence platform.
 
-The planned intelligence layer is hybrid rather than dependent on one opaque model:
+---
+
+# ML and Risk Intelligence
+
+Aegis uses a **hybrid detection approach** rather than depending on a single model.
+
+The current Phase 5 ML pipeline contains four complementary signal families:
 
 ```text
-Anomaly Detection  → Is this unusual?
-Classification      → Does it resemble known malicious behavior?
-Behavioral Analysis → Is it unusual for this user or entity?
-Risk Engine         → How dangerous is the overall situation?
+                    Event Features
+                         |
+        +----------------+----------------+
+        |                |                |
+        v                v                v
+  Supervised       Isolation Forest   Behavioral
+  Classifier       Anomaly Detection   Baseline
+        |                |                |
+        +----------------+----------------+
+                         |
+                    Autoencoder
+                         |
+                         v
+                  ML Signal Layer
+                         |
+                         v
+                   Hybrid Score
 ```
 
-The project overview identifies these planned signal families:
+### Implemented ML Components
 
-- Isolation Forest for global anomaly detection
-- Autoencoder-based anomaly detection
-- Behavioral baselines and deviation scoring
-- Supervised classification such as XGBoost or LightGBM
-- Contextual security signals
-- Risk aggregation and explainability
+#### 1. Supervised Classifier
 
-These models, training workflows, inference service, and explainability layer are not present in the current repository.
+A Decision Tree classifier is trained using labeled events:
 
-## Cryptographic audit integrity
+```text
+Features
+   ↓
+Decision Tree
+   ↓
+Probability of suspicious class
+```
+
+The classifier learns from known normal and suspicious examples.
+
+#### 2. Isolation Forest
+
+Isolation Forest performs unsupervised anomaly detection.
+
+It does not require the `is_suspicious` label to determine whether an event looks unusual.
+
+```text
+Event
+  ↓
+Isolation Forest
+  ↓
+Anomaly Score
+```
+
+#### 3. Behavioral Baseline
+
+The behavioral detector establishes a statistical baseline from observed feature values and measures how far an event deviates from that baseline.
+
+```text
+Observed Event
+      ↓
+Compare Against Baseline
+      ↓
+Normalized Deviation
+      ↓
+Behavioral Signal
+```
+
+The current implementation uses a global statistical baseline. Per-user or per-entity behavioral profiling is planned for later risk-intelligence work.
+
+#### 4. Autoencoder
+
+The autoencoder learns to reconstruct event features.
+
+Large reconstruction errors indicate that an event is harder for the model to represent.
+
+```text
+Input Event
+     ↓
+Autoencoder
+     ↓
+Reconstructed Event
+     ↓
+Reconstruction Error
+     ↓
+Anomaly Signal
+```
+
+#### 5. Hybrid Signal
+
+The four signals are combined into a single ML anomaly signal:
+
+```text
+Classifier       ──┐
+Isolation Forest ──┤
+Behavioral       ──┼──→ Hybrid ML Score
+Autoencoder      ──┘
+```
+
+The current implementation uses initial engineering weights:
+
+```text
+Classifier       30%
+Isolation Forest 25%
+Behavioral       25%
+Autoencoder      20%
+```
+
+These weights are an initial prototype configuration, not a scientifically validated production calibration.
+
+### Signal Semantics
+
+The individual signals are normalized to a 0–1 range where applicable:
+
+```text
+0 ───────────────────────────── 1
+│                                │
+Less suspicious              More suspicious
+```
+
+These values should generally be interpreted as **ML/anomaly signals**, not probabilities.
+
+The supervised classifier produces a probability-like suspicious-class value through `predict_proba()`. The other detection methods produce anomaly or deviation scores that are normalized for comparison and ensemble use.
+
+The hybrid score is an ML signal and is **not yet the final Aegis security risk score**.
+
+Final application-level risk aggregation is introduced in Phase 6.
+
+---
+
+# Phase 5 Evaluation
+
+The current synthetic dataset contains both normal and suspicious events.
+
+The completed evaluation showed:
+
+| Signal           |    Normal | Suspicious |
+| ---------------- | --------: | ---------: |
+| Classifier       |     0.000 |      0.900 |
+| Isolation Forest |     0.142 |      0.684 |
+| Behavioral       |     0.070 |      0.462 |
+| Autoencoder      |     0.147 |      0.416 |
+| **Hybrid**       | **0.082** |  **0.640** |
+
+The important result is that the different detection approaches produce **higher anomaly/suspicion signals for the known suspicious records than for the normal records**.
+
+The classifier provides the strongest separation, while Isolation Forest, behavioral analysis, and the autoencoder provide complementary signals.
+
+The hybrid signal combines those perspectives into a single ML-level assessment.
+
+### Evaluation Limitation
+
+The current dataset is intentionally small and synthetic.
+
+The evaluation demonstrates that the pipeline works coherently and that the implemented detection methods distinguish the provided normal and suspicious examples.
+
+It should **not** be interpreted as proof of real-world attack-detection accuracy.
+
+Production-quality evaluation will require larger and more representative datasets, proper validation/test separation, realistic attack distributions, calibration, and model monitoring.
+
+---
+
+# Cryptographic Audit Integrity
 
 Aegis is designed to record important security actions in a tamper-evident audit trail so unauthorized modifications to historical records can be detected.
+
+The planned model is:
 
 ```text
 Audit Event
@@ -109,128 +288,355 @@ Hash Chain
 Integrity Verification
 ```
 
-Hash-chained audit records are planned. Merkle-tree batches and inclusion proofs are later planned extensions; they are not implemented in Phase 1.
+Hash-chained audit records are planned for Phase 7.
 
-## Security model
+Merkle-tree batching and inclusion proofs are planned as later extensions where they provide useful verification capabilities.
 
-The target security model treats identity, authorization, and isolation as separate concerns:
+**Cryptographic audit integrity is not currently implemented.**
 
-- OAuth/OIDC establishes user identity.
-- RBAC provides explicit permissions, with contextual authorization planned later.
-- Each organization owns its users, events, policies, models, and audit records.
-- Tenant isolation is intended to be enforced in both the application and PostgreSQL Row-Level Security.
+---
 
-OAuth/OIDC, RBAC, multi-tenancy, and PostgreSQL RLS are planned. The current database contains only foundation tables and does not yet expose tenant-aware application data.
+# Security Model
 
-## Architecture
+The target security model treats identity, authorization, and tenant isolation as separate concerns.
+
+* OAuth/OIDC establishes user identity.
+* RBAC provides explicit permissions.
+* Contextual authorization can provide additional policy decisions.
+* Organizations act as tenant boundaries.
+* Tenant-scoped access is enforced at the application and database layers.
+* PostgreSQL Row-Level Security is planned for defense-in-depth tenant isolation.
+
+These capabilities are introduced incrementally through Phases 2 and 3.
+
+---
+
+# Architecture
+
+The intended architecture separates application responsibilities:
 
 ```text
                          React Dashboard
                                 |
                                 v
                            Go Backend
-                         /     |      \\
-                        /      |       \\
+                         /     |      \
+                        /      |       \
                        v       v        v
                  PostgreSQL  Event     Python ML
                              System     Service
                                           |
                                           v
-                                  Risk Intelligence
+                                  ML / Risk Signals
+                                          |
+                                          v
+                                   Risk Intelligence
 ```
 
-The diagram describes the intended system boundary. The checked-in implementation currently contains the Go backend and PostgreSQL integration; the dashboard, event infrastructure, and Python service are future components.
+The architectural ownership is:
 
-## Technology stack
+| Component            | Responsibility                                                 |
+| -------------------- | -------------------------------------------------------------- |
+| React                | Presentation and dashboard                                     |
+| Go                   | API, policies, orchestration, application-level risk decisions |
+| Python               | ML training, artifacts, inference, ML signals                  |
+| PostgreSQL           | Relational persistence and tenant isolation                    |
+| Event infrastructure | Asynchronous event delivery and processing                     |
+| Audit subsystem      | Cryptographic integrity and verification                       |
 
-| Layer | Technology | Status and purpose |
-|---|---|---|
-| Backend | Go 1.27 | Implemented API and service lifecycle |
-| Database | PostgreSQL 15+ | Implemented persistence and readiness checks |
-| Database access | pgx/v5 | Implemented connection pooling |
-| Migrations | golang-migrate v4 | Implemented schema migration and rollback support |
-| ML service | Python; scikit-learn; XGBoost or LightGBM | Planned model training and inference |
-| Frontend | React + TypeScript | Planned analytics dashboard |
-| Event infrastructure | Event streams and asynchronous consumers | Planned event processing |
-| Identity | OAuth/OIDC | Planned authentication |
-| Authorization | RBAC, contextual rules, PostgreSQL RLS | Planned access control and tenant isolation |
-| Audit integrity | Hash chains; Merkle trees | Planned tamper evidence and inclusion proofs |
+The Python ML system is deliberately independent from the Go backend in Phase 5.
 
-## Current status
+Phase 6 introduces the integration between ML signals and the Go-owned risk engine.
 
-### Implemented — Phase 1 foundation
+---
 
-- Environment configuration with validation and safe database URL redaction in logs
-- Fail-fast startup when the database URL, environment, or server address is invalid
-- Bounded PostgreSQL connection pool and readiness connectivity checks
-- `GET /health/live`, independent of PostgreSQL availability
-- `GET /health/ready`, reporting PostgreSQL readiness
-- Graceful HTTP shutdown on `SIGINT` and `SIGTERM`
-- Initial SQL migration and rollback using `golang-migrate`
-- Unit tests and opt-in PostgreSQL integration tests
+# Technology Stack
 
-### Planned
+| Layer                | Technology                             | Status             |
+| -------------------- | -------------------------------------- | ------------------ |
+| Backend              | Go                                     | Implemented        |
+| Database             | PostgreSQL                             | Implemented        |
+| Database access      | pgx/v5                                 | Implemented        |
+| Migrations           | golang-migrate                         | Implemented        |
+| ML                   | Python                                 | Implemented        |
+| ML libraries         | NumPy, pandas, scikit-learn, joblib    | Implemented        |
+| Frontend             | React + TypeScript                     | Planned            |
+| Event infrastructure | Event streams / asynchronous consumers | Planned            |
+| Identity             | OAuth/OIDC                             | Planned            |
+| Authorization        | RBAC, contextual rules, PostgreSQL RLS | Planned            |
+| Risk intelligence    | Go + Python ML signals                 | Planned in Phase 6 |
+| Audit integrity      | Hash chains / Merkle trees             | Planned            |
+| Real-time delivery   | WebSockets                             | Planned            |
 
-- Authentication and tenant-aware authorization
-- Event ingestion and asynchronous processing
-- Behavioral profiling, trained ML models, and explainable risk aggregation
-- Tamper-evident audit records, then Merkle-tree verification
-- React analytics dashboard and real-time updates
-- Production hardening, observability, deployment, and CI/CD
+---
 
-## Roadmap
+# Current Status
 
-The roadmap follows the project’s documented principle that complexity should be earned one architectural responsibility at a time. Phases after Phase 1 are planned, not commitments to a completed implementation.
+## Phase 0 — Foundation and Development Environment
 
-| Phase | Focus | Status |
-|---|---|---|
-| Phase 0 | Project definition and architecture | Planned foundation work |
-| Phase 1 | Go service, configuration, database, health, and migrations | Implemented |
-| Phase 2 | Identity and authentication | Planned |
-| Phase 3 | Authorization and permissions | Planned |
-| Phase 4 | Multi-tenancy and database isolation | Planned |
-| Phase 5 | Event ingestion and asynchronous processing | Planned |
-| Phase 6 | Machine learning models and inference | Planned |
-| Phase 7 | Risk intelligence and explainability | Planned |
-| Phase 8 | Cryptographic audit and verification | Planned |
-| Phase 9 | Real-time analytics dashboard | Planned |
-| Phase 10 | Production hardening and operations | Planned |
+**Status: Complete**
 
-## Engineering highlights
+The project foundation and development structure have been established.
 
-Aegis is technically interesting because its target design brings several responsibilities together while keeping their roles distinct:
+## Phase 1 — Core Go Backend and PostgreSQL Data Layer
 
-- Hybrid anomaly, behavioral, classification, and contextual risk signals
-- Separation of ML inference from application-level risk aggregation
-- Defense-in-depth tenant isolation and authorization
-- Audit history designed for independent integrity verification
-- Incremental architecture: each phase introduces a concrete system responsibility
+**Status: Complete**
 
-The last four items describe planned architecture beyond the current foundation.
+Implemented:
 
-## Project structure
+* Environment configuration and validation
+* Safe database URL redaction
+* PostgreSQL connection pooling
+* Database readiness checks
+* `GET /health/live`
+* `GET /health/ready`
+* Graceful HTTP shutdown
+* SQL migrations
+* Unit tests
+* PostgreSQL integration tests
+
+## Phase 2 — Identity and Authentication
+
+**Status: Planned**
+
+Planned:
+
+* OAuth 2.0 / OpenID Connect
+* User identity
+* Login and logout
+* Callback handling
+* Authenticated user context
+
+## Phase 3 — Authorization and Multi-Tenancy
+
+**Status: Planned**
+
+Planned:
+
+* Organizations and tenants
+* Memberships
+* Roles and permissions
+* RBAC
+* Tenant context
+* Tenant-scoped data access
+* PostgreSQL Row-Level Security
+
+## Phase 4 — Event Domain and Ingestion
+
+**Status: Planned**
+
+Planned:
+
+* Canonical event schema
+* Event validation
+* Event creation
+* Event persistence
+* Event retrieval
+* Event filtering
+* Event lifecycle states
+
+## Phase 5 — Independent Hybrid Machine Learning System
+
+**Status: Complete**
+
+Implemented:
+
+* Dataset loading
+* Feature selection and preprocessing
+* Supervised Decision Tree classifier
+* Isolation Forest anomaly detection
+* Behavioral baseline scoring
+* Autoencoder anomaly detection
+* Signal calibration
+* Hybrid signal aggregation
+* Model artifact persistence
+* Artifact loading
+* Independent event inference
+* Unified model training
+* Evaluation across normal and suspicious events
+
+The ML service is independent of the Go backend.
+
+## Phase 6 — Adaptive Risk Intelligence
+
+**Status: Next**
+
+Planned:
+
+* Event-to-feature mapping
+* ML signal integration
+* Behavioral context
+* Contextual security signals
+* Go-owned risk aggregation
+* Risk scoring
+* Explainable risk factors
+* Backend risk retrieval
+
+## Phase 7 — Cryptographic Audit Integrity
+
+**Status: Planned**
+
+Planned:
+
+* Canonical audit records
+* Cryptographic hashing
+* Hash chains
+* Chain verification
+* Integrity reporting
+* Optional Merkle-tree verification
+
+## Phase 8 — Asynchronous Event-Driven Processing
+
+**Status: Planned**
+
+Planned:
+
+* Event publishing
+* Background consumers
+* Retry handling
+* Idempotent processing
+* Deferred risk processing
+* Queue or stream integration
+
+## Phase 9 — Real-Time Analytics and Dashboard Delivery
+
+**Status: Planned**
+
+Planned:
+
+* WebSocket delivery
+* Live risk updates
+* Event analytics
+* Risk trend visualization
+* Model metrics
+* Audit integrity visibility
+
+## Phase 10 — Observability, Security Hardening, and Release Readiness
+
+**Status: Planned**
+
+Planned:
+
+* Structured logging
+* Metrics
+* Tracing
+* Rate limiting
+* Security hardening
+* CI/CD
+* Test consolidation
+* Deployment readiness
+* Production documentation
+
+---
+
+# Roadmap
+
+The project follows the principle that complexity should be earned one architectural responsibility at a time.
+
+| Phase | Focus                                                    | Status       |
+| ----- | -------------------------------------------------------- | ------------ |
+| 0     | Foundation and Development Environment                   | Complete     |
+| 1     | Core Go Backend and PostgreSQL Data Layer                | Complete     |
+| 2     | Identity and Authentication                              | Planned      |
+| 3     | Authorization and Multi-Tenancy                          | Planned      |
+| 4     | Event Domain and Ingestion                               | Planned      |
+| 5     | Independent Hybrid Machine Learning System               | **Complete** |
+| 6     | Adaptive Risk Intelligence                               | Next         |
+| 7     | Cryptographic Audit Integrity                            | Planned      |
+| 8     | Asynchronous Event-Driven Processing                     | Planned      |
+| 9     | Real-Time Analytics and Dashboard Delivery               | Planned      |
+| 10    | Observability, Security Hardening, and Release Readiness | Planned      |
+
+### Dependency Chain
+
+```text
+Phase 0
+   ↓
+Phase 1
+   ↓
+Phase 2
+   ↓
+Phase 3
+   ↓
+Phase 4
+   ↓
+Phase 5 ✓
+   ↓
+Phase 6 ← Next
+   ↓
+Phase 7
+   ↓
+Phase 8
+   ↓
+Phase 9
+   ↓
+Phase 10
+```
+
+Each phase introduces one dominant capability and creates the minimum dependency required for the next phase.
+
+---
+
+# Project Structure
 
 ```text
 .
 ├── backend/
 │   ├── cmd/api/                 # Backend entrypoint
 │   ├── internal/health/         # Liveness and readiness handlers
-│   ├── internal/platform/       # Configuration, server, and database lifecycle
+│   ├── internal/platform/       # Configuration, server, database lifecycle
 │   ├── migrations/              # Up/down SQL migrations
 │   └── README.md                # Backend development notes
+│
+├── ml-service/
+│   ├── data/
+│   │   └── events.csv           # ML training/evaluation dataset
+│   │
+│   ├── models/                  # Saved ML artifacts
+│   │
+│   ├── training/
+│   │   ├── preprocessing.py
+│   │   ├── train_classifier.py
+│   │   ├── evaluate_classifier.py
+│   │   ├── train_isolation_forest.py
+│   │   ├── behavioral_baseline.py
+│   │   ├── train_autoencoder.py
+│   │   ├── train_all.py
+│   │   └── artifacts.py
+│   │
+│   ├── inference/
+│   │   ├── signal_calibration.py
+│   │   ├── signals.py
+│   │   ├── ensemble.py
+│   │   ├── ml_signal.py
+│   │   ├── predict.py
+│   │   └── test_inference.py
+│   │
+│   ├── evaluation/
+│   │   └── evaluate_all.py
+│   │
+│   └── requirements.txt
+│
 ├── docs/
-│   └── 01_OVERVIEW.md           # Product vision and target architecture
+│   └── 01_OVERVIEW.md           # Project vision and architecture
+│
 └── README.md
 ```
 
-## Quick start
+The Python virtual environment is intentionally excluded from version control.
+
+---
+
+# Quick Start
+
+## Backend
 
 ### Prerequisites
 
-- Go 1.27.0 or newer
-- PostgreSQL 15 or newer
-- [golang-migrate](https://github.com/golang-migrate/migrate/tree/master/cmd/migrate) v4.x
-- Docker, if running PostgreSQL locally in a container
+* Go
+* PostgreSQL
+* golang-migrate
+* Docker, if running PostgreSQL locally in a container
 
 ### Start PostgreSQL
 
@@ -256,7 +662,11 @@ migrate -database "$AEGIS_DATABASE_URL" -path migrations up
 go run ./cmd/api
 ```
 
-The API listens on `http://localhost:8080`.
+The API listens on:
+
+```text
+http://localhost:8080
+```
 
 ### Check health
 
@@ -265,39 +675,189 @@ curl http://localhost:8080/health/live
 curl http://localhost:8080/health/ready
 ```
 
-Both return `{"status":"UP"}` when the corresponding check succeeds. Liveness does not depend on PostgreSQL; readiness returns `503` and `{"status":"DOWN"}` when PostgreSQL is unavailable.
+---
 
-## Configuration
+# ML Service
 
-| Variable | Required | Default | Description |
-|---|---:|---|---|
-| `AEGIS_DATABASE_URL` | Yes | — | PostgreSQL connection string |
-| `AEGIS_SERVER_ADDR` | No | `:8080` | HTTP bind address and port |
-| `AEGIS_ENV` | No | `development` | `development`, `test`, or `production` |
+The ML service is independently executable from `ml-service/`.
 
-The backend fails fast when the database URL is missing, the environment is unsupported, or the server address does not include a port.
+## Install dependencies
 
-## Testing
+```bash
+cd ml-service
+
+python -m venv .venv
+source .venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+## Train all models
+
+```bash
+cd training
+python train_all.py
+```
+
+This trains the four implemented detection components and saves their artifacts into:
+
+```text
+ml-service/models/
+```
+
+## Test independent inference
+
+```bash
+cd ../inference
+python test_inference.py
+```
+
+Inference accepts an event containing:
+
+```text
+hour
+failed_logins
+requests_per_minute
+files_downloaded
+```
+
+and produces:
+
+```text
+Classifier Signal
+Isolation Forest Signal
+Behavioral Signal
+Autoencoder Signal
+Hybrid Score
+Interpretation
+```
+
+## Evaluate the complete ML pipeline
+
+```bash
+cd ../evaluation
+python evaluate_all.py
+```
+
+This evaluates the saved inference pipeline against the available dataset and compares normal and suspicious events across all implemented signal families.
+
+---
+
+# Configuration
+
+The backend currently supports:
+
+| Variable             | Required | Default       | Description                  |
+| -------------------- | -------: | ------------- | ---------------------------- |
+| `AEGIS_DATABASE_URL` |      Yes | —             | PostgreSQL connection string |
+| `AEGIS_SERVER_ADDR`  |       No | `:8080`       | HTTP bind address and port   |
+| `AEGIS_ENV`          |       No | `development` | Runtime environment          |
+
+The backend fails fast when required configuration is missing or invalid.
+
+---
+
+# Testing
+
+## Backend
 
 From `backend/`:
 
 ```bash
-# Unit tests; skips tests requiring PostgreSQL
 go test -short ./...
+```
 
-# All tests; requires AEGIS_DATABASE_URL to point to a test database
+Runs unit tests while skipping tests requiring PostgreSQL.
+
+```bash
 go test -v ./...
+```
 
-# Formatting and dependency consistency
+Runs the full test suite when a suitable PostgreSQL test database is available.
+
+```bash
 go fmt ./...
 go mod tidy
 ```
 
-## Documentation
+## ML
 
-- [Project overview and long-term architecture](docs/01_OVERVIEW.md)
-- [Backend setup, health checks, migrations, and testing](backend/README.md)
+From `ml-service/`:
 
-## License
+```bash
+cd training
+python train_all.py
+```
+
+Then:
+
+```bash
+cd ../inference
+python test_inference.py
+```
+
+And:
+
+```bash
+cd ../evaluation
+python evaluate_all.py
+```
+
+---
+
+# Engineering Principles
+
+Aegis is being built around several architectural principles:
+
+### Independent capabilities first
+
+Each major capability is implemented and tested independently before integration.
+
+### ML does not own the final security decision
+
+The Python service produces ML signals.
+
+The eventual Go risk engine owns the application-level risk decision.
+
+```text
+Python ML
+   ↓
+ML Signals
+   ↓
+Go Risk Aggregator
+   ↓
+Final Risk Assessment
+```
+
+### Multiple detection perspectives
+
+Aegis does not depend on one anomaly detector.
+
+The ML layer combines:
+
+* Supervised classification
+* Global anomaly detection
+* Behavioral deviation
+* Reconstruction-based anomaly detection
+
+### Defense in depth
+
+Identity, authorization, tenant isolation, risk intelligence, and audit integrity remain separate responsibilities.
+
+### Earn complexity gradually
+
+Queues, WebSockets, cryptographic verification, contextual risk, and production infrastructure are introduced only after their prerequisite capabilities are stable.
+
+---
+
+# Documentation
+
+* Project overview and long-term architecture: `docs/01_OVERVIEW.md`
+* Backend setup, health checks, migrations, and testing: `backend/README.md`
+* Phase roadmap: `03_PHASE_PLANNING.md`
+
+---
+
+# License
 
 No license has been declared yet.
