@@ -1,0 +1,20 @@
+{
+    "features": [
+        "hour",
+        "failed_logins",
+        "requests_per_minute",
+        "files_downloaded"
+    ],
+    "classifier": {
+        "type": "DecisionTreeClassifier"
+    },
+    "isolation_forest": {
+        "type": "IsolationForest"
+    },
+    "behavioral_baseline": {
+        "type": "statistical_baseline"
+    },
+    "autoencoder": {
+        "type": "MLPRegressor"
+    }
+}
