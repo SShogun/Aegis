@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/sshogun/Aegis/backend/auth"
 	"github.com/sshogun/Aegis/backend/internal/health"
 )
 
@@ -14,13 +15,27 @@ type Server struct {
 }
 
 // NewServer creates and configures a new HTTP server.
-func NewServer(cfg *Config, healthHandler *health.Handler) *Server {
+func NewServer(
+	cfg *Config,
+	healthHandler *health.Handler,
+	authHandler *auth.Handler,
+) *Server {
 	mux := http.NewServeMux()
 
-	// Register routes
+	// Health routes
 	mux.HandleFunc("/health/live", healthHandler.Liveness())
 	mux.HandleFunc("/health/ready", healthHandler.Readiness())
 
+	// Authentication routes
+	if authHandler != nil {
+		mux.HandleFunc("/auth/login", authHandler.Login)
+		mux.HandleFunc("/auth/callback", authHandler.Callback)
+		mux.HandleFunc("GET /auth/logout", authHandler.Logout)
+		mux.Handle(
+			"GET /auth/me",
+			authHandler.RequireAuthentication(http.HandlerFunc(authHandler.Me)),
+		)
+	}
 	httpServer := &http.Server{
 		Addr:         cfg.ServerAddr,
 		Handler:      mux,

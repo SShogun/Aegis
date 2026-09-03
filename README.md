@@ -46,7 +46,7 @@ User / System Activity
 
 The project is being implemented layer by layer rather than building this entire pipeline at once.
 
-**Current implementation status: Phase 5 is complete.**
+**Current implementation status: Phase 5 and Phase 2 (backend) are complete.**
 
 The independent hybrid ML system is implemented and can train models, persist artifacts, perform inference, and combine multiple detection signals. The Go risk-intelligence integration begins in Phase 6.
 
@@ -103,6 +103,38 @@ Aegis separates detection, risk aggregation, and audit integrity so that no sing
 The architecture is intentionally incremental.
 
 The current implementation has established the backend foundation and independent ML capability. Future phases connect those capabilities into the complete risk-intelligence platform.
+
+
+---
+
+# Authentication Architecture
+
+Aegis uses OpenID Connect (OIDC) to authenticate users and issues its own persistent, HTTP-only sessions to secure the backend API.
+
+```mermaid
+flowchart TD
+    User([User]) -->|GET /auth/login| Login[Login Handler]
+    Login -->|Redirect| OIDC[OIDC Provider]
+    OIDC -->|Redirect w/ Code| Callback[Callback Handler]
+    Callback --> ID[Verify ID Token]
+    ID --> Mapping[Find/Create Internal User]
+    Mapping --> Session[Create Persistent Session]
+    Session --> Cookie[Set HttpOnly Cookie]
+    Cookie --> Auth[Authenticated Requests]
+    Auth --> Middleware[Auth Middleware]
+    Middleware --> Endpoint[Protected Endpoint]
+```
+
+### Public and Protected Boundaries
+
+The backend enforces strict boundaries between public authentication routes and protected data.
+
+* `/auth/login` — **Public**
+* `/auth/callback` — **Public**
+* `/auth/logout` — **Public** (invalidates supplied session if present)
+* `/auth/me` — **Authenticated** (requires valid session)
+
+No OAuth tokens or session IDs are exposed to client JavaScript.
 
 ---
 
@@ -397,15 +429,19 @@ Implemented:
 
 ## Phase 2 — Identity and Authentication
 
-**Status: Planned**
+**Status: Backend Complete, Frontend Deferred**
 
-Planned:
+Implemented (Backend):
 
-* OAuth 2.0 / OpenID Connect
-* User identity
-* Login and logout
-* Callback handling
-* Authenticated user context
+* OAuth 2.0 / OpenID Connect provider configuration and discovery
+* Internal user identity mapping
+* Persistent PostgreSQL sessions
+* Login, callback handling, and HTTP-only cookie management
+* Authentication middleware and authenticated request context
+* Safe identity retrieval (`GET /auth/me`)
+* Idempotent logout
+
+*Note: Frontend authentication state is explicitly DEFERRED until a frontend application framework is added.*
 
 ## Phase 3 — Authorization and Multi-Tenancy
 
@@ -537,7 +573,7 @@ The project follows the principle that complexity should be earned one architect
 | ----- | -------------------------------------------------------- | ------------ |
 | 0     | Foundation and Development Environment                   | Complete     |
 | 1     | Core Go Backend and PostgreSQL Data Layer                | Complete     |
-| 2     | Identity and Authentication                              | Planned      |
+| 2     | Identity and Authentication                              | Backend Complete |
 | 3     | Authorization and Multi-Tenancy                          | Planned      |
 | 4     | Event Domain and Ingestion                               | Planned      |
 | 5     | Independent Hybrid Machine Learning System               | **Complete** |

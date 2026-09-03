@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/sshogun/Aegis/backend/auth"
 	"github.com/sshogun/Aegis/backend/internal/health"
 	"github.com/sshogun/Aegis/backend/internal/platform"
 )
@@ -27,7 +28,7 @@ func TestServerRoutes(t *testing.T) {
 
 	db := &mockDB{}
 	healthHandler := health.NewHandler(db)
-	server := platform.NewServer(cfg, healthHandler)
+	server := platform.NewServer(cfg, healthHandler, nil)
 	handler := server.Handler()
 
 	t.Run("Health routes are registered and liveness succeeds", func(t *testing.T) {
@@ -73,6 +74,46 @@ func TestServerRoutes(t *testing.T) {
 	})
 }
 
+func TestAuthMeRouteRequiresAuthentication(t *testing.T) {
+	cfg := &platform.Config{
+		ServerAddr: ":8080",
+	}
+
+	db := &mockDB{}
+	healthHandler := health.NewHandler(db)
+	authHandler := auth.NewHandler(nil, nil, nil)
+	server := platform.NewServer(cfg, healthHandler, authHandler)
+	handler := server.Handler()
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/me", nil)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Errorf("expected status %d for /auth/me without session, got %d", http.StatusUnauthorized, rr.Code)
+	}
+}
+
+func TestAuthLogoutRouteIsPublic(t *testing.T) {
+	cfg := &platform.Config{
+		ServerAddr: ":8080",
+	}
+
+	db := &mockDB{}
+	healthHandler := health.NewHandler(db)
+	authHandler := auth.NewHandler(nil, nil, nil)
+	server := platform.NewServer(cfg, healthHandler, authHandler)
+	handler := server.Handler()
+
+	req := httptest.NewRequest(http.MethodGet, "/auth/logout", nil)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected status %d for public /auth/logout, got %d", http.StatusOK, rr.Code)
+	}
+}
+
 func TestServerGracefulShutdown(t *testing.T) {
 	cfg := &platform.Config{
 		ServerAddr: ":0", // use random port
@@ -80,7 +121,7 @@ func TestServerGracefulShutdown(t *testing.T) {
 
 	db := &mockDB{}
 	healthHandler := health.NewHandler(db)
-	server := platform.NewServer(cfg, healthHandler)
+	server := platform.NewServer(cfg, healthHandler, nil)
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -92,12 +133,12 @@ func TestServerGracefulShutdown(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // cancel immediately to test shutdown
-	
+
 	err := server.Shutdown(ctx)
 	if err != nil && !errors.Is(err, context.Canceled) {
 		t.Errorf("expected nil or context.Canceled during shutdown, got: %v", err)
 	}
-	
+
 	// Wait for Start to return
 	startErr := <-errCh
 	if startErr != nil && !errors.Is(startErr, http.ErrServerClosed) {
